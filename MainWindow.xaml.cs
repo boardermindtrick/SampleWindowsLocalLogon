@@ -7,6 +7,10 @@ using System.Security;
 using System.Runtime.InteropServices;
 using System.Runtime.ConstrainedExecution;
 using System.ComponentModel;
+using System.Collections.Generic;
+using System.Linq;
+using System.Management;
+using System.Management.Instrumentation;
 
 namespace WpfApplication2
 {
@@ -21,7 +25,7 @@ namespace WpfApplication2
 
             try
             {
-                using (var e = Impersonation.LogonUser("machinename", "username", "password", LogonType.Network))
+                using (var e = Impersonation.LogonUser("domain", "username", "password", LogonType.Network))
                 {
                     
                     var s = e;
@@ -34,6 +38,22 @@ namespace WpfApplication2
                 var i = ex.Message;
 
             }
+            var userList = GetUserList();
+        }
+
+        private List<string> GetUserList()
+        {
+            var userList = new List<string>();
+            SelectQuery query = new SelectQuery("Win32_UserAccount");
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(query);
+            foreach (ManagementObject envVar in searcher.Get())
+            {
+                userList.Add(envVar["Name"].ToString());
+//                Console.WriteLine("Username : {0}", envVar["Name"]);
+            }
+
+            //The userList is now filled with the users of this PC
+            return userList;
         }
     }
 
@@ -110,13 +130,14 @@ namespace WpfApplication2
                         NativeMethods.CloseHandle(token);
                     }
 
-                //throw new ImpersonationException(new  Win32Exception(errorCode));
-                throw new Exception(errorCode.ToString());
-            }
+                     //throw new ImpersonationException(new  Win32Exception(errorCode));
+                    throw new Exception(errorCode.ToString());
+                }
 
                 handle = new SafeTokenHandle(token);
                 context = WindowsIdentity.Impersonate(_handle.DangerousGetHandle());
             }
+
 
             /// <summary>
             /// Disposes the <see cref="Impersonation"/> object, ending impersonation and restoring the original user.
